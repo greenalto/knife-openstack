@@ -86,6 +86,11 @@ class Chef
       :boolean => true,
       :default => false
 
+      option :nics,
+      :long => "--nics NICS",
+      :description => "JSON array specifying NICS attrs, e.g. one nic would be: [{'net_id': 'xxx', 'v4_fixed_id': 'x.x.x.x', 'port_id': 'xxx'}]",
+      :default => nil      
+
       option :ssh_key_name,
       :short => "-S KEY",
       :long => "--ssh-key KEY",
@@ -265,25 +270,19 @@ class Chef
         # servers require a name, generate one if not passed
         node_name = get_node_name(config[:chef_node_name])
 
-        # this really should be caught in Fog
-        if locate_config_value(:user_data).nil?
-          server_def = {
-            :name => node_name,
-            :image_ref => locate_config_value(:image),
-            :flavor_ref => locate_config_value(:flavor),
-            :security_groups => locate_config_value(:security_groups),
-            :key_name => locate_config_value(:openstack_ssh_key_id)
-          }
-        else
-          server_def = {
-            :name => node_name,
-            :image_ref => locate_config_value(:image),
-            :flavor_ref => locate_config_value(:flavor),
-            :security_groups => locate_config_value(:security_groups),
-            :key_name => locate_config_value(:openstack_ssh_key_id),
-            :user_data => locate_config_value(:user_data)
-          }
+        server_def = {
+          :name            => node_name,
+          :image_ref       => locate_config_value(:image),
+          :flavor_ref      => locate_config_value(:flavor),
+          :security_groups => locate_config_value(:security_groups),
+          :key_name        => locate_config_value(:openstack_ssh_key_id)
+        }
+        unless locate_config_value(:user_data).nil?
+          server_def.merge!({ :user_data => locate_config_value(:user_data) })
         end
+        unless locate_config_value(:nics).nil?
+          server_def.merge!({ :nics => JSON.parse(locate_config_value(:nics)) })
+        end        
 
         Chef::Log.debug("Name #{node_name}")
         Chef::Log.debug("Image #{locate_config_value(:image)}")
